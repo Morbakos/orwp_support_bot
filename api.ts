@@ -7,7 +7,7 @@ const client:Client = new Client();
 client.login(process.env.BOT_TOKEN);
 
 // Constantes
-export let supportMessageId = "";
+let supportMessageId = "";
 const supportChannelId = '830523124554006538';
 
 client.on('ready', function() {

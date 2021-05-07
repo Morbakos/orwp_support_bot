@@ -22,6 +22,6 @@ export async function deleteSupport(channel:TextChannel) {
     let db = new Database();
     await db.execQueryWithParams('UPDATE channel SET actif = 0 WHERE channelUniqueId = ?', [channel.id]);
     let log_channel = channel.guild.channels.cache.find(c => c.name === "logs_bot") as TextChannel;
-    await log_channel.send(`Suppression du channel ${channel.name} par ${channel.lastMessage.author.toString()}`);
+    await log_channel.send(`Suppression du channel ${channel.name} par ${channel.lastMessage.author.username}`);
     channel.delete("Support terminé");
 }
