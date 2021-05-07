@@ -5,6 +5,7 @@
     "main": "api.ts",
     "scripts": {
         "start": "npm run build; node api.js",
+        "start:prod": "npm run build && node api.js",
         "dev": "nodemon api.ts",
         "test": "echo \"Error: no test specified\" && exit 1",
         "watch": "tsc -p tsconfig.json -w",
