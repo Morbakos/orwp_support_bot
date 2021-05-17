@@ -1,4 +1,4 @@
-import { Client, Message, TextChannel } from "discord.js";
+import { Client, Message, MessageReaction, TextChannel, User } from "discord.js";
 import * as dotenv from "dotenv";
 import { analyzeMessage, analyzeReaction, createChannel } from "./functions";
 dotenv.config();
@@ -18,14 +18,11 @@ client.on('ready', function() {
     getTicketsList();
 });
 
-client.on('messageReactionAdd', function (messageReaction, user) {
+client.on('messageReactionAdd', function (messageReaction: MessageReaction, user: User) {
     if (user.bot) {return;}
 
     if (messageReaction.message.id === supportMessageId) {
-        messageReaction.fetch().then(reaction => {
-            reaction.remove();
-            messageReaction.message.react('✅');
-        });
+        messageReaction.users.remove(user);
         createChannel(user, messageReaction.message.guild);
     } else {
         analyzeReaction(messageReaction);
@@ -76,3 +73,7 @@ function getTicketsList() {
             });
     })
 }
+
+client.on("error", (e) => console.table(e));
+client.on("warn", (e) => console.table(e));
+client.on("debug", (e) => console.table(e));
