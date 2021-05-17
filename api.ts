@@ -1,4 +1,4 @@
-import { Client, TextChannel } from "discord.js";
+import { Client, Message, TextChannel } from "discord.js";
 import * as dotenv from "dotenv";
 import { analyzeMessage, analyzeReaction, createChannel } from "./functions";
 dotenv.config();
@@ -15,6 +15,7 @@ client.on('ready', function() {
     client.user.setActivity('les mecs de l\'Est', {type: 'WATCHING'});
     let channel = client.channels.cache.get(supportChannelId) as TextChannel;
     clearSupportMessage(channel);
+    getTicketsList();
 });
 
 client.on('messageReactionAdd', function (messageReaction, user) {
@@ -48,16 +49,30 @@ client.on('message', function (message) {
 function clearSupportMessage(channel: TextChannel) {
     channel.fetch().then((chan: TextChannel) => {
         chan.messages.fetch().then(msgManager => {
-            if (msgManager.size > 0) {
-                msgManager.forEach(msg => {
+            if (msgManager.size > 1) {
+                msgManager.forEach((msg: Message) => {
                     msg.delete();
                 });
+
+                channel.send(`**Besoin d'aide ?**\nRéagissez avec :white_check_mark: à ce message, on va s'occuper de vous !`)
+                    .then(message => {
+                        supportMessageId = message.id;
+                        message.react('✅');
+                    });
+            } else {
+                supportMessageId = msgManager.first().id;
             }
+            console.log(`Loaded channel ${chan.name}`);
         });
     });
-    channel.send(`**Besoin d'aide ?**\nRéagissez avec :white_check_mark: à ce message, on va s'occuper de vous !`)
-        .then(message => {
-            supportMessageId = message.id;
-            message.react('✅');
-        });
+}
+
+function getTicketsList() {
+    let channels = client.guilds.cache.get(process.env.SERVER_ID).channels.cache.filter(c => c.parentID === process.env.SUPPORT_CATEGORY_ID && c.name.startsWith('support-'));
+    channels.forEach(async (c: TextChannel) => {
+        c.messages.fetch()
+            .then((messages) => {
+                console.log(`Old messages loaded for channel ${c.name}`);
+            });
+    })
 }

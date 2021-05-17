@@ -134,14 +134,14 @@ export async function nextSupportStep(reaction: MessageReaction) {
     let db = new Database();
     let supportStep = await db.execQueryWithParams('SELECT idEtape, idCategorie, reactionMessage, actif FROM channel WHERE channelUniqueId = ?', [channelId]);
 
-    if (supportStep[0].actif != true) {
+    if (supportStep[0]?.actif != true) {
         channel.send("Ce ticket n'est plus actif.");
         return;
     }
 
-    if (supportStep[0].reactionMessage === null && supportStep[0].idEtape === null && supportStep[0].idCategorie === null) { // Premier message: définir une catégorie
+    if (supportStep[0]?.reactionMessage === null && supportStep[0]?.idEtape === null && supportStep[0]?.idCategorie === null) { // Premier message: définir une catégorie
         generateEmbedCategoryPicker(channel);
-    } else if(supportStep[0].reactionMessage != null && message.id === supportStep[0].reactionMessage && (supportStep[0].idEtape === null && supportStep[0].idCategorie === null)) { 
+    } else if(supportStep[0]?.reactionMessage != null && message.id === supportStep[0]?.reactionMessage && (supportStep[0]?.idEtape === null && supportStep[0]?.idCategorie === null)) { 
         // Réaction au message de catégorie
         let catName = await db.execQueryWithParams('SELECT nomCategorie FROM categorie WHERE idCategorie = ?', [convertEmojiToNumber[reaction.emoji.name]]);
         let embed = generateEmbedSupportMessage('Catégorie choisie', `Vous avez choisie la catégorie \`${catName[0].nomCategorie}\`.`);
@@ -151,7 +151,7 @@ export async function nextSupportStep(reaction: MessageReaction) {
         updateCategorie(channelId, convertEmojiToNumber[reaction.emoji.name]);
         nextSupportStep(reaction);
     } else {
-        let instruction = await db.execQueryWithParams('SELECT numeroEtape, titre, instruction FROM etape WHERE numeroEtape = ? AND idCategorie = ?', [supportStep[0].idEtape, supportStep[0].idCategorie]);
+        let instruction = await db.execQueryWithParams('SELECT numeroEtape, titre, instruction FROM etape WHERE numeroEtape = ? AND idCategorie = ?', [supportStep[0]?.idEtape, supportStep[0]?.idCategorie]);
         
         if (!instruction[0]) {
             pingOrga(message.channel);
@@ -163,7 +163,7 @@ export async function nextSupportStep(reaction: MessageReaction) {
         msg.react('✔️');
 
         updateReactionMessage(channelId, msg.id);
-        updateEtape(channelId, (supportStep[0].idEtape + 1));
+        updateEtape(channelId, (supportStep[0]?.idEtape + 1));
     }
 }
 
