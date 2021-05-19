@@ -4,7 +4,16 @@ dotenv.config();
 
 export class Database {
 
-    private databaseConnection;
+    private static instance: Database;
+
+    public static getInstance(): Database {
+        if(!this.instance) {
+            this.instance = new Database();
+        }
+        return this.instance;
+    }
+
+    private databaseConnection: any;
 
     constructor(){
         this.databaseConnection = mysql.createConnection({
@@ -12,32 +21,26 @@ export class Database {
             user: process.env.DATABASE_USERNAME,
             password: process.env.DATABASE_PASSWORD,
             database: process.env.DATABASE_NAME,
-            connectTImeout: 999999
+            connectTimeout: 999999
         });
     }
 
     /**
-     * 
-     * @param {string} query 
-     * @returns query result or error
-     */ 
-    async execQuery (query) {
-        return new Promise<any>((resolve, reject) => {
-            this.databaseConnection.query(query,
-                (error, result) => {
-                    return error ? reject(error) : resolve(result);
-                }
-            );
-        });
-    }
-
-    /**
-     * 
-     * @param {string} query 
-     * @param {array} params 
+     *
+     * @param {string} query
      * @returns query result or error
      */
-    async execQueryWithParams (query, params) {
+    execQuery(query: string) {
+        return this.execQueryWithParams(query)
+    }
+
+    /**
+     *
+     * @param {string} query
+     * @param {array} params
+     * @returns query result or error
+     */
+    async execQueryWithParams(query: string, params: Array<any> = undefined) {
         return new Promise<any>((resolve, reject) => {
             this.databaseConnection.query(
                 query,

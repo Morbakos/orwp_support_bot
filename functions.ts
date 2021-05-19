@@ -5,52 +5,40 @@ import { Database } from "./database";
 const orgaRoleId = "830398261667692544";
 const supportCategoryId = '830523077540446218';
 
-const convertNumberToEmoji = {
-    1: "1️⃣",
-    2: "2️⃣",
-    3: "3️⃣",
-    4: "4️⃣",
-    5: "5️⃣",
-    6: "6️⃣",
-    7: "7️⃣",
-    8: "8️⃣",
-    9: "9️⃣"
-}
-
-const convertEmojiToNumber = {
-     "1️⃣": 1,
-     "2️⃣": 2,
-     "3️⃣": 3,
-     "4️⃣": 4,
-     "5️⃣": 5,
-     "6️⃣": 6,
-     "7️⃣": 7,
-     "8️⃣": 8,
-     "9️⃣": 9
+enum Emojis {
+    "1️⃣" = 1,
+    "2️⃣",
+    "3️⃣",
+    "4️⃣",
+    "5️⃣",
+    "6️⃣",
+    "7️⃣",
+    "8️⃣",
+    "9️⃣"
 }
 
 /**
- * 
- * @param {Discord.MessageReaction} messageReaction 
+ *
+ * @param {Discord.MessageReaction} messageReaction
  */
-export async function analyzeReaction(messageReaction) {
-    let isSupportChannel = await checkChannel(messageReaction.message.channel);
+export async function analyzeReaction(messageReaction: MessageReaction) {
+    const isSupportChannel = await checkChannel(messageReaction.message.channel);
     if (!isSupportChannel) {return;} // Leave if not support channel
-    nextSupportStep(messageReaction);
+    await nextSupportStep(messageReaction);
 }
 
 /**
- * 
- * @param {Discord.Message} message 
- * @returns 
+ *
+ * @param {Discord.Message} message
+ * @returns
  */
 export function analyzeMessage(message: Message) {
     if (
         message.content.toLocaleLowerCase().startsWith('!admin') &&
         message.member.roles.cache.some(r => r.id === orgaRoleId)
     ) {
-        let splittedMessage = message.content.split(' ');
-        let command = splittedMessage[1];
+        const splittedMessage = message.content.split(' ');
+        const command = splittedMessage[1];
 
         switch (command) {
 
@@ -74,40 +62,41 @@ export function analyzeMessage(message: Message) {
 
 /**
  * Create new support channel
- * @param {Discord.User} user 
- * @param {Discord.Guild} guild 
+ * @param {Discord.User} user
+ * @param {Discord.Guild} guild
  */
-export function createChannel(user: User, guild: Guild) {
-    let channelName = `support-${user.username}`;
-    guild.channels.create(channelName, {
+export async function createChannel(user: User, {channels, roles}: Guild) {
+    const channelName = `support-${user.username}`;
+    const channel = await channels.create(channelName, {
         reason: `Channel de support pour ${user.username}`,
         parent: supportCategoryId
-    }).then(channel => {
-        channel.createOverwrite(user, {
-            'VIEW_CHANNEL': true,
-            'SEND_MESSAGES': true,
-            'ATTACH_FILES': true
-        });
-
-        channel.createOverwrite(guild.roles.cache.find(r => r.name === "@everyone"), {
-            'VIEW_CHANNEL': false
-        });
-
-        channel.send(`Bonjour ${user.toString()} ! Nous allons t'aider à résoudre ton problème dans les meilleurs délais :smile:.\nAfin de nous permettre d'être le plus efficace, nous t'invitons à suivre les instructions du bot et à réagir dès que c'est fait. Si le bot n'est pas en mesure de t'apporter une solution, n'hésites pas à ping les organisateurs.`);
-        newChannel(channel);
     });
+
+    await newChannel(channel);
+
+    channel.createOverwrite(user, {
+        'VIEW_CHANNEL': true,
+        'SEND_MESSAGES': true,
+        'ATTACH_FILES': true
+    });
+
+    channel.createOverwrite(roles.cache.find(r => r.name === "@everyone"), {
+        'VIEW_CHANNEL': false
+    });
+
+    channel.send(`Bonjour ${user.toString()} ! Nous allons t'aider à résoudre ton problème dans les meilleurs délais :smile:.\nAfin de nous permettre d'être le plus efficace, nous t'invitons à suivre les instructions du bot et à réagir dès que c'est fait. Si le bot n'est pas en mesure de t'apporter une solution, n'hésites pas à ping les organisateurs.`);
 }
 
 /**
- * 
- * @param {Channel} channel 
+ *
+ * @param {Channel} channel
  * @returns bool
  */
-export async function checkChannel(channel:Channel) {
-    let db = new Database()
-    const result = await db.execQueryWithParams('SELECT 1 FROM channel WHERE channelUniqueId = ?', [channel.id]);
-    
-    if(result[0] === undefined) {
+export async function checkChannel( { id }:Channel) {
+    const db = Database.getInstance();
+    const result = await db.execQueryWithParams('SELECT 1 FROM channel WHERE channelUniqueId = ?', [id]);
+
+    if(!result[0]) {
         // This is not a support channel
         return false;
     } else {
@@ -116,139 +105,133 @@ export async function checkChannel(channel:Channel) {
 };
 
 /**
- * 
- * @param {Discord.Channel} channel 
+ *
+ * @param {Discord.Channel} channel
  */
 export async function newChannel(channel:Channel) {
-    let channelId = channel.id;
-    let db = new Database();
-    db.execQueryWithParams("INSERT INTO channel(channelUniqueId) VALUES (?)", [channelId]);
+    const db = Database.getInstance();
+    db.execQueryWithParams("INSERT INTO channel(channelUniqueId) VALUES (?)", [channel.id]);
     generateEmbedCategoryPicker(channel as TextChannel);
 }
 
 /**
- * 
- * @param {Discord.MessageReaction} reaction 
+ *
+ * @param {Discord.MessageReaction} reaction
  */
 export async function nextSupportStep(reaction: MessageReaction) {
 
-    let message = reaction.message;
-    let channel = message.channel as TextChannel;
-    let channelId = message.channel.id;
-    let db = new Database();
-    let supportStep = await db.execQueryWithParams('SELECT idEtape, idCategorie, reactionMessage, actif FROM channel WHERE channelUniqueId = ?', [channelId]);
+    const { message } = reaction;
+    const channel = message.channel as TextChannel;
+    const { id: channelId } = message.channel;
+    const db = Database.getInstance();
+    const [supportStep] = await db.execQueryWithParams('SELECT idEtape, idCategorie, reactionMessage, actif FROM channel WHERE channelUniqueId = ?', [channelId]);
 
-    if (supportStep[0].actif != true) {
+    if (supportStep.actif !== true) {
         channel.send("Ce ticket n'est plus actif.");
         return;
     }
 
-    if (supportStep[0].reactionMessage === null && supportStep[0].idEtape === null && supportStep[0].idCategorie === null) { // Premier message: définir une catégorie
+    if (supportStep.reactionMessage === null && supportStep.idEtape === null && supportStep.idCategorie === null) { // Premier message: définir une catégorie
         generateEmbedCategoryPicker(channel);
-    } else if(supportStep[0].reactionMessage != null && message.id === supportStep[0].reactionMessage && (supportStep[0].idEtape === null && supportStep[0].idCategorie === null)) { 
+    } else if(supportStep.reactionMessage !== null && message.id === supportStep.reactionMessage && (supportStep.idEtape === null && supportStep.idCategorie === null)) {
         // Réaction au message de catégorie
-        let catName = await db.execQueryWithParams('SELECT nomCategorie FROM categorie WHERE idCategorie = ?', [convertEmojiToNumber[reaction.emoji.name]]);
-        let embed = generateEmbedSupportMessage('Catégorie choisie', `Vous avez choisie la catégorie \`${catName[0].nomCategorie}\`.`);
-        message.channel.send({embed: embed});
-        
-        updateEtape(channelId, 1);
-        updateCategorie(channelId, convertEmojiToNumber[reaction.emoji.name]);
-        nextSupportStep(reaction);
+        const [catName] = await db.execQueryWithParams('SELECT nomCategorie FROM categorie WHERE idCategorie = ?', [Emojis[reaction.emoji.name]]);
+        const embed = generateEmbedSupportMessage('Catégorie choisie', `Vous avez choisie la catégorie \`${catName.nomCategorie}\`.`);
+        await message.channel.send({embed});
+
+        await updateEtape(channelId, 1);
+        await updateCategorie(channelId, Emojis[reaction.emoji.name]);
+        await nextSupportStep(reaction);
     } else {
-        let instruction = await db.execQueryWithParams('SELECT numeroEtape, titre, instruction FROM etape WHERE numeroEtape = ? AND idCategorie = ?', [supportStep[0].idEtape, supportStep[0].idCategorie]);
-        
-        if (!instruction[0]) {
-            db.execQueryWithParams('UPDATE channel SET actif = 0 WHERE channelUniqueId = ?', [channel.id]);
-            pingOrga(message.channel);
+        const [instruction] = await db.execQueryWithParams('SELECT numeroEtape, titre, instruction FROM etape WHERE numeroEtape = ? AND idCategorie = ?', [supportStep.idEtape, supportStep.idCategorie]);
+
+        if (!instruction) {
+            await db.execQueryWithParams('UPDATE channel SET actif = 0 WHERE channelUniqueId = ?', [channel.id]);
+            await pingOrga(message.channel);
             return;
         }
 
-        let embed = generateEmbedSupportMessage(instruction[0].titre, instruction[0].instruction);
-        let msg = await message.channel.send({embed: embed});
-        msg.react('✅');
+        const embed = generateEmbedSupportMessage(instruction.titre, instruction.instruction);
+        const msg = await message.channel.send({embed: embed});
+        await msg.react('✅');
 
-        updateReactionMessage(channelId, msg.id);
-        updateEtape(channelId, (supportStep[0].idEtape + 1));
+        await updateReactionMessage(channelId, msg.id);
+        await updateEtape(channelId, (supportStep.idEtape + 1));
     }
 }
 
 /**
- * 
- * @param {Discord.Channel} channel 
+ *
+ * @param {Discord.Channel} channel
  */
-export function pingOrga (channel: Channel) {
-    (channel as TextChannel).send(`J'ai fini <@&${orgaRoleId}>`);
+export async function pingOrga (channel: Channel) {
+    await (channel as TextChannel).send(`J'ai fini <@&${orgaRoleId}>`);
 }
 
 /**
- * 
- * @param {Discord.Channel} channel 
+ *
+ * @param {Discord.Channel} channel
  */
 export async function generateEmbedCategoryPicker (channel: TextChannel) {
-    
-    let db = new Database();
-    let categories = await db.execQuery('SELECT nomCategorie FROM categorie');
 
-    let embedMessage = new MessageEmbed();
-    embedMessage.setTitle('Message de support');
-    embedMessage.setColor([235, 64, 52]);
-    
-    let currentNumber = 1;
+    const db = Database.getInstance();
+    const categories = await db.execQuery('SELECT nomCategorie FROM categorie');
 
-    categories.forEach(element => {
-        embedMessage.addField(element.nomCategorie, `Réagissez avec ${convertNumberToEmoji[currentNumber]}`);
-        currentNumber ++;
-    });
+    const embed = new MessageEmbed();
+    embed.setTitle('Message de support');
+    embed.setColor([235, 64, 52]);
 
-    let reactionMessage = await channel.send({embed: embedMessage});
+    for (const [currentNumber, element] of categories.entries()) {
+        embed.addField(element.nomCategorie, `Réagissez avec ${Emojis[currentNumber]}`);
+    }
 
-    currentNumber = 1;
-    categories.forEach(element => {
-        reactionMessage.react(convertNumberToEmoji[currentNumber]);
-        currentNumber ++;
-    });
+    const reactionMessage = await channel.send({embed});
 
-    updateReactionMessage(channel.id, reactionMessage.id);
+    for (const [currentNumber] of categories.entries()) {
+        await reactionMessage.react(Emojis[currentNumber]);
+    }
+
+    await updateReactionMessage(channel.id, reactionMessage.id);
 }
 
 /**
- * 
- * @param {string} channelUniqueId 
- * @param {string} messageId 
+ *
+ * @param {string} channelUniqueId
+ * @param {string} messageId
  */
-export function updateReactionMessage (channelUniqueId: string, messageId: string) {
-    let db = new Database();
-    db.execQueryWithParams('UPDATE channel SET reactionMessage = ? WHERE channelUniqueId = ?', [messageId, channelUniqueId]);
+export async function updateReactionMessage (channelUniqueId: string, messageId: string) {
+    const db = Database.getInstance();
+    await db.execQueryWithParams('UPDATE channel SET reactionMessage = ? WHERE channelUniqueId = ?', [messageId, channelUniqueId]);
 }
 
 /**
- * 
- * @param {string} channelUniqueId 
- * @param {number} categorieId 
+ *
+ * @param {string} channelUniqueId
+ * @param {number} categorieId
  */
-export function updateCategorie (channelUniqueId: string, categorieId: number) {
-    let db = new Database();
-    db.execQueryWithParams('UPDATE channel SET idCategorie = ? WHERE channelUniqueId = ?', [categorieId, channelUniqueId]);
+export async function updateCategorie (channelUniqueId: string, categorieId: number) {
+    const db = Database.getInstance();
+    await db.execQueryWithParams('UPDATE channel SET idCategorie = ? WHERE channelUniqueId = ?', [categorieId, channelUniqueId]);
 }
 
 /**
- * 
- * @param {string} channelUniqueId 
- * @param {number} etapeId 
+ *
+ * @param {string} channelUniqueId
+ * @param {number} etapeId
  */
-export function updateEtape (channelUniqueId: string, etapeId: number) {
-    let db = new Database();
-    db.execQueryWithParams('UPDATE channel SET idEtape = ? WHERE channelUniqueId = ?', [etapeId, channelUniqueId]);
+export async function updateEtape (channelUniqueId: string, etapeId: number) {
+    const db = Database.getInstance();
+    await db.execQueryWithParams('UPDATE channel SET idEtape = ? WHERE channelUniqueId = ?', [etapeId, channelUniqueId]);
 }
 
 /**
- * 
- * @param {string} titre 
- * @param {string} instruction 
+ *
+ * @param {string} titre
+ * @param {string} instruction
  * @returns embedMessage to send
  */
 export function generateEmbedSupportMessage (titre: string, instruction: string) {
-    let embedMessage = new MessageEmbed();
+    const embedMessage = new MessageEmbed();
     embedMessage.setTitle('Message de support');
     embedMessage.setColor([235, 64, 52]);
     embedMessage.addField(titre, instruction);
