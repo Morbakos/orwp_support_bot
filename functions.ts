@@ -1,4 +1,4 @@
-import { Channel, Message, MessageEmbed, MessageReaction, TextChannel } from "discord.js";
+import { Channel, Guild, Message, MessageEmbed, MessageReaction, TextChannel, User } from "discord.js";
 import { closeSupport, deleteSupport, restartSupport } from "./admin";
 import { Database } from "./database";
 
@@ -77,7 +77,7 @@ export function analyzeMessage(message: Message) {
  * @param {Discord.User} user 
  * @param {Discord.Guild} guild 
  */
-export function createChannel(user, guild) {
+export function createChannel(user: User, guild: Guild) {
     let channelName = `support-${user.username}`;
     guild.channels.create(channelName, {
         reason: `Channel de support pour ${user.username}`,
@@ -87,6 +87,10 @@ export function createChannel(user, guild) {
             'VIEW_CHANNEL': true,
             'SEND_MESSAGES': true,
             'ATTACH_FILES': true
+        });
+
+        channel.createOverwrite(guild.roles.cache.find(r => r.name === "@everyone"), {
+            'VIEW_CHANNEL': false
         });
 
         channel.send(`Bonjour ${user.toString()} ! Nous allons t'aider à résoudre ton problème dans les meilleurs délais :smile:.\nAfin de nous permettre d'être le plus efficace, nous t'invitons à suivre les instructions du bot et à réagir dès que c'est fait. Si le bot n'est pas en mesure de t'apporter une solution, n'hésites pas à ping les organisateurs.`);
@@ -154,13 +158,14 @@ export async function nextSupportStep(reaction: MessageReaction) {
         let instruction = await db.execQueryWithParams('SELECT numeroEtape, titre, instruction FROM etape WHERE numeroEtape = ? AND idCategorie = ?', [supportStep[0].idEtape, supportStep[0].idCategorie]);
         
         if (!instruction[0]) {
+            db.execQueryWithParams('UPDATE channel SET actif = 0 WHERE channelUniqueId = ?', [channel.id]);
             pingOrga(message.channel);
             return;
         }
 
         let embed = generateEmbedSupportMessage(instruction[0].titre, instruction[0].instruction);
         let msg = await message.channel.send({embed: embed});
-        msg.react('✔️');
+        msg.react('✅');
 
         updateReactionMessage(channelId, msg.id);
         updateEtape(channelId, (supportStep[0].idEtape + 1));
@@ -172,8 +177,7 @@ export async function nextSupportStep(reaction: MessageReaction) {
  * @param {Discord.Channel} channel 
  */
 export function pingOrga (channel: Channel) {
-    //(channel as TextChannel).send(`J'ai fini <@&${orgaRoleId}>`);
-    (channel as TextChannel).send(`J'ai fini.`);
+    (channel as TextChannel).send(`J'ai fini <@&${orgaRoleId}>`);
 }
 
 /**
