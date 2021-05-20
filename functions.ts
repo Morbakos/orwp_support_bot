@@ -1,5 +1,5 @@
 import { Channel, Guild, Message, MessageEmbed, MessageReaction, TextChannel, User } from "discord.js";
-import { closeSupport, deleteSupport, restartSupport } from "./admin";
+import { closeSupport, deleteSupport, openSupport, restartSupport } from "./admin";
 import { Database } from "./database";
 
 const orgaRoleId = process.env.ORGA_ROLE_ID;
@@ -51,6 +51,10 @@ export function analyzeMessage(message: Message): void {
         closeSupport(message);
         break;
 
+      case "open":
+          openSupport(message);
+          break;
+
       case "delete":
         deleteSupport(message.channel as TextChannel);
         break;
@@ -83,6 +87,10 @@ export async function createChannel(user: User, { channels, roles }: Guild): Pro
 
   await newChannel(channel);
 
+  await channel.send(
+    `Bonjour ${user.toString()} ! Nous allons t'aider à résoudre ton problème dans les meilleurs délais :smile:.\nAfin de nous permettre d'être le plus efficace, nous t'invitons à suivre les instructions du bot et à réagir dès que c'est fait. Si le bot n'est pas en mesure de t'apporter une solution, n'hésites pas à ping les organisateurs.`
+  );
+
   await generateEmbedCategoryPicker(channel as TextChannel);
 
   await channel.createOverwrite(user, {
@@ -90,10 +98,6 @@ export async function createChannel(user: User, { channels, roles }: Guild): Pro
     SEND_MESSAGES: true,
     ATTACH_FILES: true,
   });
-
-  await channel.send(
-    `Bonjour ${user.toString()} ! Nous allons t'aider à résoudre ton problème dans les meilleurs délais :smile:.\nAfin de nous permettre d'être le plus efficace, nous t'invitons à suivre les instructions du bot et à réagir dès que c'est fait. Si le bot n'est pas en mesure de t'apporter une solution, n'hésites pas à ping les organisateurs.`
-  );
 
   await pm.delete();
 }

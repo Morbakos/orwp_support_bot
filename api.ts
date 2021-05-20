@@ -71,7 +71,7 @@ async function getTicketsList() {
   const channels = client.guilds.cache
     .get(process.env.SERVER_ID)
     .channels.cache.filter(
-      (c) => c.parentID === process.env.SUPPORT_CATEGORY_ID && c.name.startsWith("support-")
+      (c) => c.parentID === process.env.SUPPORT_CATEGORY_ID && c.name.startsWith("support-") && !c.name.includes("humain")
     );
   for (const [, c] of channels) {
     await (c as TextChannel).messages.fetch();
