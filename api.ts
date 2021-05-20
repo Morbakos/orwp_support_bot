@@ -8,42 +8,36 @@ client.login(process.env.BOT_TOKEN);
 
 // Constantes
 let supportMessageId = "";
-const supportChannelId = "830523124554006538";
+const supportChannelId = process.env.SUPPORT_CATEGORY_ID;
 
-client.on("ready", function () {
+client.on("ready", async function () {
   console.log(`Connecté en tant que ${client.user.tag}`);
   client.user.setActivity("les mecs de l'Est", { type: "WATCHING" });
   const channel = client.channels.cache.get(supportChannelId) as TextChannel;
-  clearSupportMessage(channel);
-  getTicketsList();
+  await clearSupportMessage(channel);
+  await getTicketsList();
 });
 
-client.on(
-  "messageReactionAdd",
-  function (messageReaction: MessageReaction, user: User) {
-    if (user.bot) {
-      return;
-    }
-
-    if (messageReaction.message.id === supportMessageId) {
-      messageReaction.users.remove(user);
-      createChannel(user, messageReaction.message.guild);
-    } else {
-      analyzeReaction(messageReaction);
-    }
+client.on("messageReactionAdd", async function (messageReaction: MessageReaction, user: User) {
+  if (user.bot) {
+    return;
   }
-);
 
-client.on("message", function (message) {
+  if (messageReaction.message.id === supportMessageId) {
+    messageReaction.users.remove(user);
+    await createChannel(user, messageReaction.message.guild);
+  } else {
+    await analyzeReaction(messageReaction);
+  }
+});
+
+client.on("message", async function (message) {
   if (message.author.bot) {
     return;
   }
-  if (
-    message.author.username === "Morbakos" &&
-    message.content.toLowerCase().startsWith("!say")
-  ) {
+  if (message.author.username === "Morbakos" && message.content.toLowerCase().startsWith("!say")) {
     const content = message.content.split(" ").slice(1).join(" ");
-    message.channel.send(content);
+    await message.channel.send(content);
     return;
   }
 
@@ -66,7 +60,7 @@ async function clearSupportMessage(channel: TextChannel) {
       `**Besoin d'aide ?**\nRéagissez avec :white_check_mark: à ce message, on va s'occuper de vous !`
     );
     supportMessageId = message.id;
-    message.react("✅");
+    await message.react("✅");
   } else {
     supportMessageId = msgManager.first().id;
   }
@@ -77,9 +71,7 @@ async function getTicketsList() {
   const channels = client.guilds.cache
     .get(process.env.SERVER_ID)
     .channels.cache.filter(
-      (c) =>
-        c.parentID === process.env.SUPPORT_CATEGORY_ID &&
-        c.name.startsWith("support-")
+      (c) => c.parentID === process.env.SUPPORT_CATEGORY_ID && c.name.startsWith("support-")
     );
   for (const [, c] of channels) {
     await (c as TextChannel).messages.fetch();

@@ -1,5 +1,5 @@
-const mysql = require("mysql");
 import * as dotenv from "dotenv";
+import { Connection, createConnection } from "mysql";
 dotenv.config();
 
 export class Database {
@@ -12,10 +12,10 @@ export class Database {
     return this.instance;
   }
 
-  private databaseConnection: any;
+  private databaseConnection: Connection;
 
   constructor() {
-    this.databaseConnection = mysql.createConnection({
+    this.databaseConnection = createConnection({
       host: process.env.DATABASE_HOST,
       user: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
@@ -29,7 +29,7 @@ export class Database {
    * @param {string} query
    * @returns query result or error
    */
-  execQuery(query: string) {
+  execQuery(query: string): Promise<any> {
     return this.execQueryWithParams(query);
   }
 
@@ -39,9 +39,10 @@ export class Database {
    * @param {array} params
    * @returns query result or error
    */
-  async execQueryWithParams(query: string, params?: any[]) {
-    return new Promise<any[]>((resolve, reject) => {
+  async execQueryWithParams(query: string, params?: any[]): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
       this.databaseConnection.query(query, params, (error, result) => {
+        console.log(error, result);
         return error ? reject(error) : resolve(result);
       });
     });
