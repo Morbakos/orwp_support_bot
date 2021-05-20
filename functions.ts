@@ -1,12 +1,4 @@
-import {
-  Channel,
-  Guild,
-  Message,
-  MessageEmbed,
-  MessageReaction,
-  TextChannel,
-  User,
-} from "discord.js";
+import { Channel, Guild, Message, MessageEmbed, MessageReaction, TextChannel, User } from "discord.js";
 import { closeSupport, deleteSupport, restartSupport } from "./admin";
 import { Database } from "./database";
 
@@ -14,7 +6,7 @@ const orgaRoleId = process.env.ORGA_ROLE_ID;
 const supportCategoryId = process.env.SUPPORT_CATEGORY_ID;
 
 enum Emojis {
-  "1️⃣",
+  "1️⃣" = 1,
   "2️⃣",
   "3️⃣",
   "4️⃣",
@@ -75,20 +67,23 @@ export function analyzeMessage(message: Message): void {
  * @param {Discord.Guild} guild
  */
 export async function createChannel(user: User, { channels, roles }: Guild): Promise<void> {
+  const pm = await user.send("Le ticket est en cours de création... Je te ping dès que j'ai fini !");
+
   const channelName = `support-${user.username}`;
   const channel = await channels.create(channelName, {
     reason: `Channel de support pour ${user.username}`,
     parent: supportCategoryId,
   });
-
-  await newChannel(channel);
-
   await channel.createOverwrite(
     roles.cache.find((r) => r.name === "@everyone"),
     {
       VIEW_CHANNEL: false,
     }
   );
+
+  await newChannel(channel);
+
+  await generateEmbedCategoryPicker(channel as TextChannel);
 
   await channel.createOverwrite(user, {
     VIEW_CHANNEL: true,
@@ -99,6 +94,8 @@ export async function createChannel(user: User, { channels, roles }: Guild): Pro
   await channel.send(
     `Bonjour ${user.toString()} ! Nous allons t'aider à résoudre ton problème dans les meilleurs délais :smile:.\nAfin de nous permettre d'être le plus efficace, nous t'invitons à suivre les instructions du bot et à réagir dès que c'est fait. Si le bot n'est pas en mesure de t'apporter une solution, n'hésites pas à ping les organisateurs.`
   );
+
+  await pm.delete();
 }
 
 /**
@@ -108,9 +105,7 @@ export async function createChannel(user: User, { channels, roles }: Guild): Pro
  */
 export async function checkChannel({ id }: Channel): Promise<boolean> {
   const db = Database.getInstance();
-  const result = await db.execQueryWithParams("SELECT 1 FROM channel WHERE channelUniqueId = ?", [
-    id,
-  ]);
+  const result = await db.execQueryWithParams("SELECT 1 FROM channel WHERE channelUniqueId = ?", [id]);
 
   if (!result[0]) {
     // This is not a support channel
@@ -127,7 +122,6 @@ export async function checkChannel({ id }: Channel): Promise<boolean> {
 export async function newChannel(channel: Channel): Promise<void> {
   const db = Database.getInstance();
   db.execQueryWithParams("INSERT INTO channel(channelUniqueId) VALUES (?)", [channel.id]);
-  generateEmbedCategoryPicker(channel as TextChannel);
 }
 
 /**
@@ -144,8 +138,8 @@ export async function nextSupportStep(reaction: MessageReaction): Promise<void> 
     [channelId]
   );
 
-  if (supportStep.actif !== true) {
-    channel.send("Ce ticket n'est plus actif.");
+  if (supportStep.actif !== 1) {
+    await channel.send("Ce ticket n'est plus actif.");
     return;
   }
 
@@ -155,7 +149,7 @@ export async function nextSupportStep(reaction: MessageReaction): Promise<void> 
     supportStep.idCategorie === null
   ) {
     // Premier message: définir une catégorie
-    generateEmbedCategoryPicker(channel);
+    await generateEmbedCategoryPicker(channel);
   } else if (
     supportStep.reactionMessage !== null &&
     message.id === supportStep.reactionMessage &&
@@ -183,9 +177,7 @@ export async function nextSupportStep(reaction: MessageReaction): Promise<void> 
     );
 
     if (!instruction) {
-      await db.execQueryWithParams("UPDATE channel SET actif = 0 WHERE channelUniqueId = ?", [
-        channel.id,
-      ]);
+      await db.execQueryWithParams("UPDATE channel SET actif = 0 WHERE channelUniqueId = ?", [channel.id]);
       await pingOrga(message.channel);
       return;
     }
@@ -220,13 +212,13 @@ export async function generateEmbedCategoryPicker(channel: TextChannel): Promise
   embed.setColor([235, 64, 52]);
 
   for (const [currentNumber, element] of categories.entries()) {
-    embed.addField(element.nomCategorie, `Réagissez avec ${Emojis[currentNumber]}`);
+    embed.addField(element.nomCategorie, `Réagissez avec ${Emojis[currentNumber + 1]}`);
   }
 
   const reactionMessage = await channel.send({ embed });
 
   for (const [currentNumber] of categories.entries()) {
-    await reactionMessage.react(Emojis[currentNumber]);
+    await reactionMessage.react(Emojis[currentNumber + 1]);
   }
 
   await updateReactionMessage(channel.id, reactionMessage.id);
@@ -237,10 +229,7 @@ export async function generateEmbedCategoryPicker(channel: TextChannel): Promise
  * @param {string} channelUniqueId
  * @param {string} messageId
  */
-export async function updateReactionMessage(
-  channelUniqueId: string,
-  messageId: string
-): Promise<void> {
+export async function updateReactionMessage(channelUniqueId: string, messageId: string): Promise<void> {
   const db = Database.getInstance();
   await db.execQueryWithParams("UPDATE channel SET reactionMessage = ? WHERE channelUniqueId = ?", [
     messageId,
