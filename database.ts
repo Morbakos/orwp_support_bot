@@ -40,7 +40,7 @@ export class Database {
    * @returns query result or error
    */
   async execQueryWithParams(query: string, params: Array<any> = undefined) {
-    return new Promise<any>((resolve, reject) => {
+    return new Promise<any[]>((resolve, reject) => {
       this.databaseConnection.query(query, params, (error, result) => {
         return error ? reject(error) : resolve(result);
       });
