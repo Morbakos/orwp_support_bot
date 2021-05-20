@@ -10,7 +10,7 @@ import {
 import { closeSupport, deleteSupport, restartSupport } from "./admin";
 import { Database } from "./database";
 
-const orgaRoleId = "830398261667692544";
+const orgaRoleId = process.env.ORGA_ROLE_ID;
 const supportCategoryId = process.env.SUPPORT_CATEGORY_ID;
 
 enum Emojis {

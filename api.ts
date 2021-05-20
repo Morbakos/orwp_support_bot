@@ -8,7 +8,7 @@ client.login(process.env.BOT_TOKEN);
 
 // Constantes
 let supportMessageId = "";
-const supportChannelId = process.env.SUPPORT_CATEGORY_ID;
+const supportChannelId = process.env.SUPPORT_CHANNEL_ID;
 
 client.on("ready", async function () {
   console.log(`Connecté en tant que ${client.user.tag}`);
