@@ -14,7 +14,7 @@ const orgaRoleId = "830398261667692544";
 const supportCategoryId = "830523077540446218";
 
 enum Emojis {
-  "1️⃣" = 1,
+  "1️⃣",
   "2️⃣",
   "3️⃣",
   "4️⃣",
