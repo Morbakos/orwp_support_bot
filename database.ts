@@ -1,51 +1,49 @@
-const mysql = require('mysql');
 import * as dotenv from "dotenv";
+import { Connection, createConnection } from "mysql";
 dotenv.config();
 
 export class Database {
+  private static instance: Database;
 
-    private databaseConnection;
-
-    constructor(){
-        this.databaseConnection = mysql.createConnection({
-            host: process.env.DATABASE_HOST,
-            user: process.env.DATABASE_USERNAME,
-            password: process.env.DATABASE_PASSWORD,
-            database: process.env.DATABASE_NAME,
-            connectTImeout: 999999
-        });
+  public static getInstance(): Database {
+    if (!this.instance) {
+      this.instance = new Database();
     }
+    return this.instance;
+  }
 
-    /**
-     * 
-     * @param {string} query 
-     * @returns query result or error
-     */ 
-    async execQuery (query) {
-        return new Promise<any>((resolve, reject) => {
-            this.databaseConnection.query(query,
-                (error, result) => {
-                    return error ? reject(error) : resolve(result);
-                }
-            );
-        });
-    }
+  private databaseConnection: Connection;
 
-    /**
-     * 
-     * @param {string} query 
-     * @param {array} params 
-     * @returns query result or error
-     */
-    async execQueryWithParams (query, params) {
-        return new Promise<any>((resolve, reject) => {
-            this.databaseConnection.query(
-                query,
-                params,
-                (error, result) => {
-                    return error ? reject(error) : resolve(result);
-                }
-            );
-        });
-    }
+  constructor() {
+    this.databaseConnection = createConnection({
+      host: process.env.DATABASE_HOST,
+      user: process.env.DATABASE_USERNAME,
+      password: process.env.DATABASE_PASSWORD,
+      database: process.env.DATABASE_NAME,
+      connectTimeout: 999999,
+    });
+  }
+
+  /**
+   *
+   * @param {string} query
+   * @returns query result or error
+   */
+  execQuery(query: string): Promise<any> {
+    return this.execQueryWithParams(query);
+  }
+
+  /**
+   *
+   * @param {string} query
+   * @param {array} params
+   * @returns query result or error
+   */
+  async execQueryWithParams(query: string, params?: any[]): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+      this.databaseConnection.query(query, params, (error, result) => {
+        return error ? reject(error) : resolve(result);
+      });
+    });
+  }
 }
