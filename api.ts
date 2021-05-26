@@ -4,7 +4,6 @@ import { analyzeMessage, analyzeReaction, createChannel } from "./functions";
 dotenv.config();
 
 const client = new Client();
-client.login(process.env.BOT_TOKEN);
 
 // Constantes
 let supportMessageId = "";
@@ -79,6 +78,27 @@ async function getTicketsList() {
   }
 }
 
-client.on("error", (e) => console.table(e));
+client.on("error", (e) => {
+  console.table(e);
+  client.login(process.env.BOT_TOKEN);
+});
 client.on("warn", (e) => console.table(e));
 client.on("debug", (e) => console.table(e));
+
+
+let autoRecoTimes = 0;
+const autoReconnect = () =>
+  client
+    .login(process.env.BOT_TOKEN)
+    .catch((e) => {
+      console.error("Discord Error", e);
+      autoRecoTimes++;
+      setTimeout(() => {
+        autoReconnect();
+      }, (autoRecoTimes ** 2) * 500);
+    })
+    .then(() => {
+      autoRecoTimes = 0;
+    });
+
+autoReconnect();

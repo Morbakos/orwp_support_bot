@@ -22,6 +22,15 @@ export class Database {
       database: process.env.DATABASE_NAME,
       connectTimeout: 999999,
     });
+
+    this.databaseConnection.on('error', function(err) {
+      console.log('db error', err);
+      if(err.code === 'PROTOCOL_CONNECTION_LOST') {
+        Database.getInstance();
+      } else {
+        throw err;
+      }
+    });
   }
 
   /**
